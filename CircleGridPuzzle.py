@@ -7,7 +7,7 @@ import random
 import os
 import math
 import tkinter as tk
-from tkinter import filedialog
+from tkinter import filedialog,ttk
 import svgwrite
 import itertools
 import numpy as np
@@ -48,6 +48,7 @@ class MazeGui():
         self.circlerad = tk.IntVar(value=10) 
         self.minpl = tk.IntVar(value=4) 
         self.maxpl = tk.IntVar(value=50) 
+        self.progress = tk.IntVar(value=0)
 
         self.width = self.ncol.get()*2*self.circlerad.get()+2*self.frame.get()
         self.height = self.nrow.get()*2*self.circlerad.get()+2*self.frame.get()
@@ -67,8 +68,14 @@ class MazeGui():
      
         self.grid_scales, _ = self.__scale_layout_group("Grid Settings", self.aframe, 150, grid_sliders)
         self.gen_buttons, _ = self.__button_layout_group( "Buttons", self.aframe, 100, gen_btns)
+        prlab = tk.Label(self.aframe,text="Generation progress")
+        prlab.grid()
+
+        self.genprogress = ttk.Progressbar(self.aframe,length=200,mode='determinate',variable=self.progress)
+        self.genprogress.grid()
         self.plabel = tk.Label(self.aframe,text="Piece count: N/A")
         self.plabel.grid()
+
         self.dframe.pack(side="right")
         self.canvas.pack()
         self.pieces =[]
@@ -271,9 +278,11 @@ class MazeGui():
         self.grid=Cellgrid(nrow,ncol)
         self.pieces =[]
         npiece =1
+        nv=  ncol*nrow
         while(self.grid.notvisitedvertices):
-           npiece = self.createpiece(npiece,self.minpl.get(),self.maxpl.get())
-        
+            npiece = self.createpiece(npiece,self.minpl.get(),self.maxpl.get())
+            self.progress.set(int((1-len(self.grid.notvisitedvertices)/nv)*100))
+            self.aframe.update()
         self.removesmallpieces(self.minpl.get())
         for _ in range(0,self.minpl.get()):
             self.fillholes()
