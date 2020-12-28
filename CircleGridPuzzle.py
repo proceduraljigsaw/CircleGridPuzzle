@@ -124,8 +124,12 @@ class MazeGui():
             self.canvas.pack()
         except:
             pass
-    def createpiece(self,npiece, minv = 20, maxv = 100):
-        target_nv= random.randint(minv,maxv-minv)
+
+    def createpiece(self,npiece, minv = 20, maxv = 100,force_target_highlen=False):
+        if force_target_highlen:
+            target_nv = maxv
+        else:
+            target_nv = random.randint(minv,maxv-minv)
         myvertices = []
         myconnections =[]
         #Choose starting vertex
@@ -141,18 +145,16 @@ class MazeGui():
             nc = random.choice(allowed_connections)
             myconnections.append(nc)
             myvertices.append(nc.p2)
-            self.grid.markvertex(nc.p2,npiece)
             self.grid.notvisitedvertices.remove(nc.p2)
             self.grid.emptycells.remove(nc.cell)
     
-        if myconnections:
-            self.grid.markvertex(vi,npiece)
+        if len(myconnections) >= minv:
             self.pieces.append(myconnections)
             return npiece+1
         else:
             return npiece
     
-    def regenerate(self):
+    def generateoccupancymatrix(self):
         self.grid.reset()
         np = 1
         for p in self.pieces:
@@ -166,12 +168,6 @@ class MazeGui():
                         self.grid.notvisitedvertices.remove(c.p2)
                 self.grid.emptycells.remove(c.cell)
             np = np+1
-
-    def removesmallpieces(self, minpiece=4):
-        removal = [p for p in self.pieces if len(p)<minpiece]
-        for p in removal:
-            self.pieces.remove(p)
-        self.regenerate()
 
     def fillholes(self):
         filledcells =[]
@@ -202,6 +198,7 @@ class MazeGui():
 
         for c in filledcells:
             self.grid.emptycells.remove(c)
+        return bool(filledcells)
 
     @staticmethod
     def addconnectionarcs(con, connections,arcs,rad, border,canvas= None, first = False):
@@ -216,7 +213,7 @@ class MazeGui():
             newarc = CircleArc((con.p1[0],con.p1[1]+1),rad,border,0,'+')
         arcs.append(newarc)
         if canvas:
-            newarc.painttocanvas(canvas,border,"red")
+            newarc.painttocanvas(canvas)
 
         if(con.p2_taken):
             #Now go to P2, and check if there are any connections in the three remaining quadrants
@@ -232,12 +229,12 @@ class MazeGui():
                     newarc=CircleArc(con.p2,rad,border,q,'-')
                     arcs.append(newarc)
                     if canvas:
-                        newarc.painttocanvas(canvas,border)
+                        newarc.painttocanvas(canvas)
         else:
             newarc = CircleArc(con.p2,rad,border,(con.quadrant+2)%4,'+')
             arcs.append(newarc)
             if canvas:
-                newarc.painttocanvas(canvas,border)
+                newarc.painttocanvas(canvas)
 
         #Final transition arc the transition arc from P2 to P1
         if con.quadrant == 0:
@@ -250,7 +247,7 @@ class MazeGui():
             newarc = CircleArc((con.p1[0]+1,con.p1[1]),rad,border,2,'+')
         arcs.append(newarc)
         if canvas:
-            newarc.painttocanvas(canvas,border,"red")
+            newarc.painttocanvas(canvas)
 
         if first:
         #Check if something from P1 is missing
@@ -266,7 +263,7 @@ class MazeGui():
                     newarc=CircleArc(con.p1,rad,border,q,'-')
                     arcs.append(newarc)
                     if canvas:
-                        newarc.painttocanvas(canvas,border,"green")
+                        newarc.painttocanvas(canvas)
       
     def generate(self):
    
@@ -280,13 +277,35 @@ class MazeGui():
         self.pieces =[]
         npiece =1
         nv=  ncol*nrow
+        #Generate the pieces, initial pass
         while(self.grid.notvisitedvertices):
             npiece = self.createpiece(npiece,self.minpl.get(),self.maxpl.get())
             self.progress.set(int((1-len(self.grid.notvisitedvertices)/nv)*100))
             self.aframe.update()
-        self.removesmallpieces(self.minpl.get())
-        for _ in range(0,self.minpl.get()):
-            self.fillholes()
+        #Regenerate the occupancy grid, freeing the cells of the pieces that didn't pass the length threshold during generation
+        self.generateoccupancymatrix()
+
+        #Run the hole filler until there's nothing else to fill
+        filled = True
+        while(filled):
+            filled = self.fillholes()
+        #Regenerate all the stuff again, to mark empty vertices as non visited
+        self.generateoccupancymatrix()
+        #For some reason, sometimes there's unoccupied space where a valid piece would fit.
+        #an extra generation path deals with this. The target piece of the piece is set to a
+        #very high value, so that the space is always filled.
+        npiece = len(self.pieces)+1
+        while(self.grid.notvisitedvertices):
+            npiece = self.createpiece(npiece,self.minpl.get(),nv,force_target_highlen=True)
+        #And again...
+        self.generateoccupancymatrix()
+
+        #Run the hole filler until there's nothing else to fill, just in case the extra piece left a grid hole
+        filled = True
+        while(filled):
+            filled = self.fillholes()
+        
+        #Now everything should be 100% filled
 
         #paint the thing
         borderpts =[(1,1),(1,self.height-1),(self.width-1,self.height-1),(self.width-1,1),(1,1)]
@@ -317,6 +336,7 @@ class MazeGui():
             arcs =[]
             MazeGui.addconnectionarcs(p[0],p,arcs,cradius,border,self.canvas,first=True)
         self.plabel.config(text="Piece count: "+str(int(len(self.pieces))))
+
     def exportsvg(self):
         border = self.frame.get()
         cradius = self.circlerad.get()

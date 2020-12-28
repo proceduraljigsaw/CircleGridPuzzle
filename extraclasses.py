@@ -82,12 +82,12 @@ class Cellgrid():
     def __init__(self, nrow, ncol):
         self.nrow = nrow
         self.ncol = ncol
-        self.notvisitedvertices = [(x,y)  for x in range(0,ncol) for y in range(0,nrow)]
         self.reset()
 
     def reset(self):
         ncol = self.ncol
         nrow = self.nrow
+        self.notvisitedvertices = [(x,y)  for x in range(0,ncol) for y in range(0,nrow)]
         self.vertexgrid = np.zeros((ncol,nrow), dtype=int)#([[0 for x in range(0,ncol)] for y in range(0,nrow)])
         self.emptycells =[Cell((x,y))  for x in range(0,ncol-1) for y in range(0,nrow-1)]
 
@@ -133,7 +133,7 @@ class CircleArc():
         else:
             return False
             
-    def painttocanvas(self,canvas,border,color="black",width=2):
+    def painttocanvas(self,canvas, width=2):
         bwidth = int(round(max(width,self.rad/5),0))
         canvas.create_arc(self.cp[0]-self.rad, self.cp[1]-self.rad, self.cp[0]+self.rad, self.cp[1]+self.rad,start=90*(self.quadrant), width =bwidth, extent = 90, outline="black",style=tk.ARC)
 
