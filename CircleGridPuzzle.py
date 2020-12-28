@@ -5,6 +5,7 @@
 
 import random
 import os
+import sys
 import math
 import tkinter as tk
 from tkinter import filedialog,ttk
@@ -293,11 +294,11 @@ class MazeGui():
             self.canvas.create_line(p1[0],p1[1],p2[0],p2[1],fill="black",width=2)
 
         for p in self.pieces:
-            r = random.randint(1,14)
-            g = random.randint(1,14)
-            b = random.randint(1,14)
-            fillcolor = int(r*256+g*16+b)
-            fillstring = "#" + hex(fillcolor).split("x")[1]
+            r = random.randint(0,255)
+            g = random.randint(0,255)
+            b = random.randint(0,255)
+            fillstring = "#{:02x}{:02x}{:02x}".format(r,g,b)
+
             for c in p:
                 c1 = (cradius+border+2*cradius*c.p1[0],border+cradius+2*cradius*c.p1[1])
                 c2 = (cradius+border+2*cradius*c.p2[0],border+cradius+2*cradius*c.p2[1])
@@ -349,11 +350,10 @@ class MazeGui():
                 dwg = svgwrite.Drawing(filename, size=(str(self.width)+'mm', str(self.height)+'mm'), viewBox=('0 0 {} {}'.format(self.width, self.height)))
                 for p in self.pieces:
                     arcs =[]
-                    r = random.randint(16,240)
-                    g = random.randint(16,240)
-                    b = random.randint(16,240)
-                    fillcolor = int(r*65536+g*256+b)
-                    fillstring = "#" + hex(fillcolor).split("x")[1]
+                    r = random.randint(0,255)
+                    g = random.randint(0,255)
+                    b = random.randint(0,255)
+                    fillstring = "#{:02x}{:02x}{:02x}".format(r,g,b)
                     MazeGui.addconnectionarcs(p[0],p,arcs,cradius,border,None,first=True)
                     path= svgwrite.path.Path(d=None,stroke="black", fill =fillstring, stroke_width="1")
                     move="M"+str(arcs[0].startpoint[0])+','+str(arcs[0].startpoint[1])
@@ -395,7 +395,7 @@ class MazeGui():
                     if inpath:
                         dwg.add(path)
 
-                dwg.add(dwg.polyline([(0,0),(0,self.height-1),(self.width-1,self.height-1),(self.width-1,0),(0,0)],stroke="red", fill ="none", stroke_width="0.1"))
+                dwg.add(dwg.polyline([(0,0),(0,self.height),(self.width,self.height),(self.width,0),(0,0)],stroke="red", fill ="none", stroke_width="0.1"))
                 dwg.save()
 
 def resource_path(relative_path):
@@ -411,7 +411,8 @@ def resource_path(relative_path):
 def main():
     root = tk.Tk()
     root.title("Circle Grid Puzzle Generator")
-    root.iconbitmap(resource_path('gridicon.ico'))
+    if ( sys.platform.startswith('win')):
+        root.iconbitmap(resource_path('gridicon.ico'))
     app = MazeGui(root)
     root.mainloop()
 
